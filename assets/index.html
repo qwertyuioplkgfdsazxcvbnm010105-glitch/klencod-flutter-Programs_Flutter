@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Klencod Academy</title>
+<style>
+:root{--bg:#0b1422;--panel:#13213a;--line:#243a5c;--ink:#e6edf7;--mute:#8fa3bf;--acc:#7fb3ff;--ok:#5fd39a;--err:#ff7a7a}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,"Segoe UI",Roboto,sans-serif}
+body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+header{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+header b{flex:1;font-size:18px;letter-spacing:.3px}
+.ic{background:none;border:0;color:var(--ink);font-size:22px;padding:4px 8px}
+main{padding:16px;max-width:720px;margin:auto}
+h2{font-size:22px;margin-bottom:6px}h3{font-size:17px;margin:14px 0 4px;color:var(--acc)}
+p.m{color:var(--mute);margin-bottom:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+label{display:block;color:var(--mute);font-size:14px;margin:10px 0 4px}
+select,input,textarea{width:100%;background:#0e1a2e;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:11px;font:inherit}
+textarea{font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;min-height:190px;direction:ltr;text-align:left;tab-size:2}
+button.b{background:var(--acc);color:#07111f;border:0;border-radius:8px;padding:12px 16px;font-family:inherit;font-weight:600;font-size:16px;width:100%;margin-top:12px}
+button.b.s{background:transparent;color:var(--acc);border:1px solid var(--acc)}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.les{display:flex;gap:10px;align-items:center;width:100%;text-align:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:8px;font:inherit}
+.les span{color:var(--mute);font-size:14px;display:block}
+.dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--mute);flex:none}.dot.d{background:var(--ok);border-color:var(--ok)}
+pre{background:#08101d;border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0;overflow-x:auto;white-space:pre-wrap;text-align:left;font:13.5px/1.5 ui-monospace,Menlo,Consolas,monospace}
+code{background:#08101d;padding:1px 5px;border-radius:4px;font-family:ui-monospace,monospace;direction:ltr;display:inline-block}
+li{margin-inline-start:20px}
+.out{min-height:44px}.ok{color:var(--ok)}.er{color:var(--err)}
+.load{color:var(--mute);padding:20px;text-align:center}
+</style>
+</head>
+<body>
+<header><button class="ic" id="bk" onclick="go('home')" hidden>←</button><b>Klencod Academy</b><button class="ic" onclick="go('set')">⚙</button></header>
+<main id="app"></main>
+<script>
+const LANGS=["JavaScript","Python","Java","C","C++","C#","Go","Rust","Kotlin","Swift","PHP","Ruby","TypeScript","Dart","SQL","HTML/CSS","Bash","R","Lua"];
+const T={ar:{learn:"تعلّم البرمجة",sub:"اختار لغة ومستواك، والذكاء الاصطناعي يبني لك منهج ودروس.",lang:"اللغة",lvl:"المستوى",lv:["مبتدئ","متوسط","متقدم"],gen:"ابنِ المنهج",mine:"كورساتك",set:"الإعدادات",key:"مفتاح Gemini",model:"الموديل",ui:"لغة الشرح",save:"حفظ",saved:"اتحفظ ✓",nokey:"حط مفتاح Gemini الأول من الإعدادات.",wait:"جاري التوليد...",run:"شغّل",check:"صحّح تمريني",ask:"اسأل المدرّس",q:"اكتب سؤالك عن الدرس",ex:"التمرين",out:"النتيجة",done:"خلّصت الدرس ✓",sim:"(محاكاة بالذكاء الاصطناعي)",hint:"المفتاح بيتخزن على جهازك بس. ما تنشرش التطبيق للناس وفيه مفتاحك.",none:"لسه مفيش كورسات.",err:"حصل خطأ: "},
+en:{learn:"Learn to code",sub:"Pick a language and level. AI builds your course and lessons.",lang:"Language",lvl:"Level",lv:["Beginner","Intermediate","Advanced"],gen:"Build course",mine:"Your courses",set:"Settings",key:"Gemini API key",model:"Model",ui:"Explanation language",save:"Save",saved:"Saved ✓",nokey:"Add your Gemini key in Settings first.",wait:"Generating...",run:"Run",check:"Check my solution",ask:"Ask the tutor",q:"Ask about this lesson",ex:"Exercise",out:"Output",done:"Mark lesson done ✓",sim:"(AI-simulated)",hint:"The key stays on this device. Don't publish the app with your key inside.",none:"No courses yet.",err:"Error: "}};
+let S=JSON.parse(localStorage.getItem("kc")||"null")||{key:"",model:"gemini-2.5-flash",ui:"ar",courses:{}};
+let V={v:"home"},busy=false;
+const t=k=>T[S.ui][k],$=id=>document.getElementById(id);
+const sv=()=>localStorage.setItem("kc",JSON.stringify(S));
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const inl=p=>p.replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/^#{1,3} (.+)$/gm,"<h3>$1</h3>").replace(/^[-*] (.+)$/gm,"<li>$1</li>").replace(/\n/g,"<br>");
+const md=s=>esc(s).split(/```[\w+#-]*\n?/).map((p,i)=>i%2?"<pre dir='ltr'>"+p+"</pre>":inl(p)).join("");
+function go(v,x){V={v,...x};render()}
+async function ai(prompt,json){
+  if(!S.key)throw new Error(t("nokey"));
+  const body={contents:[{parts:[{text:prompt}]}]};
+  if(json)body.generationConfig={responseMimeType:"application/json"};
+  const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+S.model+":generateContent?key="+encodeURIComponent(S.key),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const d=await r.json();
+  if(!r.ok)throw new Error(d.error?.message||r.status);
+  const x=d.candidates?.[0]?.content?.parts?.map(p=>p.text).join("")||"";
+  return json?JSON.parse(x.replace(/^```json|```$/g,"").trim()):x;
+}
+const L=()=>S.ui=="ar"?"Egyptian-flavored simple Arabic (keep code and technical terms in English)":"English";
+function render(){
+  $("bk").hidden=V.v=="home";
+  const a=$("app");
+  if(V.v=="home")a.innerHTML=home();
+  else if(V.v=="set")a.innerHTML=settings();
+  else if(V.v=="course")a.innerHTML=course();
+  else if(V.v=="lesson")lessonView();
+  window.scrollTo(0,0);
+}
+function home(){
+  const cs=Object.entries(S.courses).reverse();
+  return `<h2>${t("learn")}</h2><p class="m">${t("sub")}</p>
+  <div class="card"><label>${t("lang")}</label><select id="lg">${LANGS.map(l=>`<option>${l}</option>`).join("")}</select>
+  <label>${t("lvl")}</label><select id="lv">${t("lv").map((l,i)=>`<option value="${i}">${l}</option>`).join("")}</select>
+  <button class="b" id="gb" onclick="genCourse()">${t("gen")}</button></div>
+  <h3>${t("mine")}</h3>${cs.length?cs.map(([id,c])=>`<button class="les" onclick="go('course',{id:'${id}'})"><div><b>${esc(c.title)}</b><span>${c.lang} · ${c.lessons.filter(l=>l.done).length}/${c.lessons.length}</span></div></button>`).join(""):`<p class="m">${t("none")}</p>`}`;
+}
+function settings(){
+  return `<h2>${t("set")}</h2><div class="card"><label>${t("key")}</label><input id="k" type="password" value="${esc(S.key)}" dir="ltr" placeholder="AIza...">
+  <label>${t("model")}</label><input id="md" value="${esc(S.model)}" dir="ltr">
+  <label>${t("ui")}</label><select id="ui"><option value="ar" ${S.ui=="ar"?"selected":""}>العربية</option><option value="en" ${S.ui=="en"?"selected":""}>English</option></select>
+  <button class="b" onclick="saveSet()">${t("save")}</button><p class="m" style="margin-top:12px;font-size:14px">${t("hint")}</p></div>`;
+}
+function saveSet(){S.key=$("k").value.trim();S.model=$("md").value.trim()||"gemini-2.5-flash";S.ui=$("ui").value;sv();document.documentElement.dir=S.ui=="ar"?"rtl":"ltr";document.documentElement.lang=S.ui;render();alert(t("saved"))}
+async function genCourse(){
+  if(busy)return;busy=true;const b=$("gb");b.textContent=t("wait");
+  const lang=$("lg").value,lv=t("lv")[$("lv").value];
+  try{
+    const r=await ai(`Create a structured course to learn ${lang} for a ${["beginner","intermediate","advanced"][$("lv").value]} student. Write in ${L()}. Return JSON only: {"title":string,"lessons":[{"t":string,"s":string}]} with 10 ordered lessons from fundamentals to practical projects; "s" is a one-line summary.`,true);
+    const id="c"+Date.now();S.courses[id]={lang,lv,title:r.title,lessons:r.lessons.map(l=>({t:l.t,s:l.s,done:false}))};sv();busy=false;go("course",{id});
+  }catch(e){busy=false;b.textContent=t("gen");alert(t("err")+e.message)}
+}
+function course(){
+  const c=S.courses[V.id];
+  return `<h2>${esc(c.title)}</h2><p class="m">${c.lang} · ${c.lv}</p>`+c.lessons.map((l,i)=>`<button class="les" onclick="openLesson('${V.id}',${i})"><i class="dot ${l.done?"d":""}"></i><div><b>${esc(l.t)}</b><span>${esc(l.s)}</span></div></button>`).join("");
+}
+async function openLesson(id,i){
+  const c=S.courses[id],l=c.lessons[i];
+  if(!l.body){
+    $("app").innerHTML=`<p class="load">${t("wait")}</p>`;V={v:"x"};
+    try{
+      const r=await ai(`Teach lesson "${l.t}" (${l.s}) of a ${c.lang} course, level ${c.lv}. Write in ${L()}. Explain clearly with short sections, analogies and 1-2 small examples using markdown code fences. Return JSON only: {"explanation":string (markdown),"code":string (runnable starter example, no fences),"exercise":string (one practical task)}.`,true);
+      l.body=r.explanation;l.code=r.code;l.ex=r.exercise;sv();
+    }catch(e){alert(t("err")+e.message);return go("course",{id})}
+  }
+  go("lesson",{id,i});
+}
+function lessonView(){
+  const c=S.courses[V.id],l=c.lessons[V.i];
+  $("app").innerHTML=`<h2>${esc(l.t)}</h2><div class="card">${md(l.body)}</div>
+  <h3>${t("ex")}</h3><div class="card">${md(l.ex)}</div>
+  <textarea id="cd" spellcheck="false">${esc(l.mine??l.code)}</textarea>
+  <div class="row"><button class="b" onclick="runCode()">${t("run")}</button><button class="b s" onclick="chk()">${t("check")}</button></div>
+  <h3>${t("out")}</h3><pre id="ot" class="out"></pre><div id="fb"></div>
+  <h3>${t("ask")}</h3><input id="qq" placeholder="${t("q")}"><button class="b s" onclick="tutor()">${t("ask")}</button><div id="an" class="card" hidden></div>
+  <button class="b" onclick="finish()">${t("done")}</button>`;
+  $("cd").addEventListener("input",e=>{l.mine=e.target.value;sv()});
+}
+function runJS(code){const o=[];const f=a=>a.map(x=>typeof x=="object"?JSON.stringify(x):String(x)).join(" ");const c={log:(...a)=>o.push(f(a)),error:(...a)=>o.push(f(a)),warn:(...a)=>o.push(f(a))};try{new Function("console",code)(c)}catch(e){o.push("Error: "+e.message)}return o.join("\n")}
+let py;
+async function runPy(code){
+  if(!py){await new Promise((r,j)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js";s.onload=r;s.onerror=j;document.head.appendChild(s)});py=await loadPyodide()}
+  let o="";py.setStdout({batched:s=>o+=s+"\n"});py.setStderr({batched:s=>o+=s+"\n"});
+  try{await py.runPythonAsync(code)}catch(e){o+=e.message}return o;
+}
+async function runCode(){
+  const c=S.courses[V.id],code=$("cd").value,ot=$("ot");ot.textContent=t("wait");
+  try{
+    if(c.lang=="JavaScript")ot.textContent=runJS(code)||"✓";
+    else if(c.lang=="Python")ot.textContent=(await runPy(code))||"✓";
+    else ot.textContent=(await ai(`Act as a ${c.lang} compiler/interpreter. Show only the exact output (or the exact error) of this program, nothing else, no markdown:\n${code}`))+"\n"+t("sim");
+  }catch(e){ot.textContent=t("err")+e.message}
+}
+async function chk(){
+  const c=S.courses[V.id],l=c.lessons[V.i],fb=$("fb");fb.innerHTML=`<p class="load">${t("wait")}</p>`;
+  try{
+    const r=await ai(`Exercise (${c.lang}): ${l.ex}\nStudent code:\n${$("cd").value}\nReview it. Reply in ${L()}. Return JSON only: {"pass":boolean,"feedback":string (markdown: what is right, bugs, one improvement hint, do not reveal full solution unless pass)}.`,true);
+    fb.innerHTML=`<div class="card"><b class="${r.pass?"ok":"er"}">${r.pass?"✓":"✗"}</b><br>${md(r.feedback)}</div>`;
+    if(r.pass){l.done=true;sv()}
+  }catch(e){fb.innerHTML=`<p class="er">${esc(t("err")+e.message)}</p>`}
+}
+async function tutor(){
+  const c=S.courses[V.id],l=c.lessons[V.i],q=$("qq").value.trim(),a=$("an");if(!q)return;
+  a.hidden=false;a.textContent=t("wait");
+  try{a.innerHTML=md(await ai(`You are a patient ${c.lang} tutor. Lesson: ${l.t}. Answer in ${L()}, concisely, with a short code example if useful.\nQuestion: ${q}`))}catch(e){a.textContent=t("err")+e.message}
+}
+function finish(){S.courses[V.id].lessons[V.i].done=true;sv();go("course",{id:V.id})}
+document.documentElement.dir=S.ui=="ar"?"rtl":"ltr";document.documentElement.lang=S.ui;
+render();
+</script>
+</body>
+</html>
